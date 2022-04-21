@@ -57,8 +57,16 @@ def classes():
 
 @app.route('/relations')
 def relations():
-    # TODO
-    return flask.render_template('not_implemented.html')
+    results = BQ_CLIENT.query(
+    '''SELECT distinct Relation, 
+        count(Relation)
+    FROM `bdcc22project.openimages.relations` 
+    group by Relation
+    order by Relation
+    ''').result()
+    data = dict(results=results)
+    return flask.render_template('relation.html', data=data)
+  
 
 @app.route('/image_info')
 def image_info():
@@ -93,8 +101,30 @@ def relation_search():
     relation = flask.request.args.get('relation', default='%')
     class2 = flask.request.args.get('class2', default='%')
     image_limit = flask.request.args.get('image_limit', default=10, type=int)
-    # TODO
-    return flask.render_template('not_implemented.html')
+    results = BQ_CLIENT.query(
+    '''
+    SELECT  ImageId, 
+        b.Description, 
+        Relation, 
+        c.Description
+    FROM `bdcc22project.openimages.relations` AS a
+    LEFT JOIN `bdcc22project.openimages.classes` AS b ON (a.Label1=b.Label)
+    LEFT JOIN `bdcc22project.openimages.classes` AS c ON (a.Label2=c.Label)
+    WHERE Relation LIKE "{1}" and b.Description LIKE '{0}' and c.Description LIKE '{2}'
+    group by ImageId,
+        b.Description, 
+        Relation,
+        c.Description
+    LIMIT {3} 
+    '''.format(class1, relation, class2, image_limit)
+    ).result()
+    logging.info('classes: results={}'.format(results.total_rows))
+    data = dict(class1=class1, 
+                relation=relation,
+                class2=class2,
+                image_limit=image_limit,
+                results=results)
+    return flask.render_template('relation_search.html', data=data)
 
 @app.route('/image_search_multiple')
 def image_search_multiple():
