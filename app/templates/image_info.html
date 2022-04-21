@@ -20,8 +20,8 @@
     
     <tr> 
         <td>
-            {% for result in data.results %}
-                <a href="/relation_search?relation={{ result }}">{{ result }}</a><br>  
+            {% for result in data.results.strip("[] ").replace('"', "").split(",") %}
+                <a href='/image_search?description={{ result.strip() }}'>{{ result.strip() }}</a><br>  
             {% endfor %}    
         </td>
     </tr>

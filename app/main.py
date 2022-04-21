@@ -88,7 +88,7 @@ def image_info():
     ).result()
 
     for row in results:
-        results2 = np.array(row[1])
+        results2 = row[1]
 
     data = dict(image_id=image_id, 
                 results=str(results2))
