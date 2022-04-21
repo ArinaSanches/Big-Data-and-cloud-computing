@@ -7,6 +7,7 @@ import flask
 import logging
 import os
 import tfmodel
+import numpy as np
 from google.cloud import bigquery
 from google.cloud import storage
 
@@ -65,14 +66,33 @@ def relations():
     order by Relation
     ''').result()
     data = dict(results=results)
-    return flask.render_template('relation.html', data=data)
+    return flask.render_template('relations.html', data=data)
   
 
 @app.route('/image_info')
 def image_info():
     image_id = flask.request.args.get('image_id')
-    # TODO
-    return flask.render_template('not_implemented.html')
+    results = BQ_CLIENT.query(
+    '''
+        SELECT distinct 
+        FORMAT('%T', ARRAY_AGG(DISTINCT CONCAT(b.Description, '#', a.Relation, '#', c.Description))) AS array_agg,
+        FORMAT('%T', ARRAY_AGG(DISTINCT e.Description)) AS array_agg
+        FROM `bdcc22project.openimages.relations` AS a
+        LEFT JOIN `bdcc22project.openimages.classes` AS b ON (a.Label1=b.Label)
+        LEFT JOIN `bdcc22project.openimages.classes` AS c ON (a.Label2=c.Label)
+        LEFT JOIN `bdcc22project.openimages.image_labels` AS d ON (a.ImageId=d.ImageId)
+        LEFT JOIN `bdcc22project.openimages.classes` AS e ON (d.Label=e.Label)
+        WHERE a.ImageId = '{0}'
+    
+    '''.format(image_id)
+    ).result()
+
+    for row in results:
+        results2 = np.array(row[1])
+
+    data = dict(image_id=image_id, 
+                results=str(results2))
+    return flask.render_template('image_info.html', data=data)
 
 @app.route('/image_search')
 def image_search():

@@ -1,0 +1,31 @@
+{% extends 'general-template.html'  %}
+{% block content %}
+
+<!DOCTYPE html>
+<html>
+<title>Not implemented</title>
+<head>
+        <meta charset="utf-8" />
+        <title>Lepilens Web</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+
+<h1>{{ data.image_id }}</h1>
+
+<table>
+    <tr>
+        <th>Classes</th>
+    </tr>
+    
+    <tr> 
+        <td>
+            {% for result in data.results %}
+                <a href="/relation_search?relation={{ result }}">{{ result }}</a><br>  
+            {% endfor %}    
+        </td>
+    </tr>
+     
+</table>
+
+{% endblock %}
