@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<title>Not implemented</title>
+<head>
+        <meta charset="utf-8" />
+        <title>Lepilens Web</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+{% extends 'general-template.html'  %}
+{% block content %}
+
+<h1>{{ data.image_id }}</h1>
+
+<table>
+    <tr>
+        <th>ImageId</th>
+        <th>Classes</th>
+        <th>Image</th> 
+    </tr>
+    {% for result in data.results %}
+    <tr> 
+        <td>
+            <a href='/image_info?image_id={{ result.ImageID }}'>{{ result.ImageID }}</a>
+        </td>
+        <td>
+            {{ result.Nclass }} / {{ data.nclass }}&nbsp;classes.<br>
+            {% for c in result.Classes %}
+                <a href='/image_search?description={{ c }}'>{{ c }}</a>  
+            {% endfor %}
+        </td>
+        <td>
+            <a href="https://storage.googleapis.com/bdcc_open_images_dataset/images/{{ result.ImageID }}.jpg">
+                <img width="300" src="https://storage.googleapis.com/bdcc_open_images_dataset/images/{{ result.ImageID }}.jpg"/>
+            </a>
+        </td>
+    </tr>
+    {% endfor %}
+     
+</table>
+
+{% endblock %}

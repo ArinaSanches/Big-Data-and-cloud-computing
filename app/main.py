@@ -8,6 +8,7 @@ import logging
 import os
 import tfmodel
 import numpy as np
+from random import shuffle
 from google.cloud import bigquery
 from google.cloud import storage
 
@@ -75,13 +76,13 @@ def image_info():
     results = BQ_CLIENT.query(
     '''
         SELECT distinct 
-        FORMAT('%T', ARRAY_AGG(DISTINCT CONCAT(b.Description, '#', a.Relation, '#', c.Description))) AS array_agg,
+        FORMAT('%T', ARRAY_AGG(DISTINCT CONCAT(b.Description, '#', d.Relation, '#', c.Description))) AS array_agg,
         FORMAT('%T', ARRAY_AGG(DISTINCT e.Description)) AS array_agg
-        FROM `bdcc22project.openimages.relations` AS a
-        LEFT JOIN `bdcc22project.openimages.classes` AS b ON (a.Label1=b.Label)
-        LEFT JOIN `bdcc22project.openimages.classes` AS c ON (a.Label2=c.Label)
-        LEFT JOIN `bdcc22project.openimages.image_labels` AS d ON (a.ImageId=d.ImageId)
-        LEFT JOIN `bdcc22project.openimages.classes` AS e ON (d.Label=e.Label)
+        FROM `bdcc22project.openimages.image_labels` AS a
+        LEFT JOIN `bdcc22project.openimages.relations` AS d ON (a.ImageId=d.ImageId)
+        LEFT JOIN `bdcc22project.openimages.classes` AS b ON (d.Label1=b.Label)
+        LEFT JOIN `bdcc22project.openimages.classes` AS c ON (d.Label2=c.Label) 
+        LEFT JOIN `bdcc22project.openimages.classes` AS e ON (a.Label=e.Label)
         WHERE a.ImageId = '{0}'
     
     '''.format(image_id)
@@ -89,9 +90,12 @@ def image_info():
 
     for row in results:
         results2 = row[1]
-
+        results3 = row[0].strip("[]").replace('"', "").split(", ")
+    results4 = list(map(lambda x: x.split("#"), results3))
+    
     data = dict(image_id=image_id, 
-                results=str(results2))
+            results=str(results2),
+            results1=results4)
     return flask.render_template('image_info.html', data=data)
 
 @app.route('/image_search')
@@ -150,8 +154,29 @@ def relation_search():
 def image_search_multiple():
     descriptions = flask.request.args.get('descriptions').split(',')
     image_limit = flask.request.args.get('image_limit', default=10, type=int)
-    # TODO
-    return flask.render_template('not_implemented.html')
+    results = BQ_CLIENT.query(
+    '''
+    SELECT DISTINCT
+      ImageId,
+      FORMAT('%T', ARRAY_AGG(Description ) OVER (PARTITION BY ImageId)) AS array_agg
+    FROM `bdcc22project.openimages.image_labels`
+    LEFT JOIN `bdcc22project.openimages.classes` USING(Label)
+    '''.format(image_limit) 
+    ).result()
+
+    results1 = []
+    for row in results:
+        line = str(row[1]).strip("[]").strip().replace('"', "").split(", ")
+        if any(item in descriptions for item in line):
+            c = list(filter(lambda x: x in descriptions, line))
+            results1.append({'ImageID': row[0], 'Classes': c, 'Nclass': len(c)})
+    shuffle(results1)
+
+    data = dict(descriptions=descriptions,
+                nclass=len(descriptions),
+                image_limit=image_limit,
+                results=results1[:image_limit])
+    return flask.render_template('image_search_multiple.html', data=data)
 
 @app.route('/image_classify_classes')
 def image_classify_classes():
