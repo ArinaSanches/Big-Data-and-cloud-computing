@@ -153,29 +153,37 @@ def relation_search():
 @app.route('/image_search_multiple')
 def image_search_multiple():
     descriptions = flask.request.args.get('descriptions').split(',')
+    a = flask.request.args.get('descriptions').split(',')
+    description = str(a).strip("[]").replace("u'",'"').replace("'",'"').replace(", ","|")
     image_limit = flask.request.args.get('image_limit', default=10, type=int)
     results = BQ_CLIENT.query(
     '''
+    WITH example AS(
     SELECT DISTINCT
-      ImageId,
-      FORMAT('%T', ARRAY_AGG(Description ) OVER (PARTITION BY ImageId)) AS array_agg
+        ImageId,
+        FORMAT('%T', ARRAY_AGG(Description ) OVER (PARTITION BY ImageId)) AS array_agg
     FROM `bdcc22project.openimages.image_labels`
     LEFT JOIN `bdcc22project.openimages.classes` USING(Label)
-    '''.format(image_limit) 
+    )
+    SELECT * 
+    FROM example
+    WHERE  REGEXP_CONTAINS(array_agg, r'{1}')
+    LIMIT {0}
+    '''.format(image_limit, description) 
     ).result()
 
     results1 = []
     for row in results:
-        line = str(row[1]).strip("[]").strip().replace('"', "").split(", ")
-        if any(item in descriptions for item in line):
-            c = list(filter(lambda x: x in descriptions, line))
-            results1.append({'ImageID': row[0], 'Classes': c, 'Nclass': len(c)})
-    shuffle(results1)
+        line = str(row[1]).strip("[]").strip().replace('"', "").split(", ")       
+        c = list(filter(lambda x: x in descriptions, line))
+        results1.append({'ImageID': row[0], 'Classes': c, 'Nclass': len(c)})
+
 
     data = dict(descriptions=descriptions,
                 nclass=len(descriptions),
                 image_limit=image_limit,
-                results=results1[:image_limit])
+                results=results1,
+                tamanho=len(results1))
     return flask.render_template('image_search_multiple.html', data=data)
 
 @app.route('/image_classify_classes')

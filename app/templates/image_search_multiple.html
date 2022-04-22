@@ -1,16 +1,13 @@
-<!DOCTYPE html>
-<html>
-<title>Not implemented</title>
-<head>
-        <meta charset="utf-8" />
-        <title>Lepilens Web</title>
-        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-
 {% extends 'general-template.html'  %}
 {% block content %}
 
-<h1>{{ data.image_id }}</h1>
+<h1>
+     {{ data.descriptions }} 
+</h1>
+
+<h1> {{data.descriptions}} </h1>
+
+{{ data.tamanho }} results out of {{ data.image_limit }} requested.
 
 <table>
     <tr>
