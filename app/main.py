@@ -155,6 +155,7 @@ def image_search_multiple():
     descriptions = flask.request.args.get('descriptions').split(',')
     a = flask.request.args.get('descriptions').split(',')
     description = str(a).strip("[]").replace("u'",'"').replace("'",'"').replace(", ","|")
+    texto = "[" + description.replace("|", ", ") + "]"
     image_limit = flask.request.args.get('image_limit', default=10, type=int)
     results = BQ_CLIENT.query(
     '''
@@ -169,6 +170,7 @@ def image_search_multiple():
     FROM example
     WHERE  REGEXP_CONTAINS(array_agg, r'{1}')
     LIMIT {0}
+    
     '''.format(image_limit, description) 
     ).result()
 
@@ -179,7 +181,7 @@ def image_search_multiple():
         results1.append({'ImageID': row[0], 'Classes': c, 'Nclass': len(c)})
 
 
-    data = dict(descriptions=descriptions,
+    data = dict(descriptions=texto,
                 nclass=len(descriptions),
                 image_limit=image_limit,
                 results=results1,
