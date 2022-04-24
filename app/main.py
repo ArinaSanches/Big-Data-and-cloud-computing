@@ -60,7 +60,8 @@ def classes():
 @app.route('/relations')
 def relations():
     results = BQ_CLIENT.query(
-    '''SELECT distinct Relation, 
+    '''
+    SELECT distinct Relation, 
         count(Relation)
     FROM `bdcc22project.openimages.relations` 
     group by Relation
@@ -76,8 +77,8 @@ def image_info():
     results = BQ_CLIENT.query(
     '''
         SELECT distinct 
-        FORMAT('%T', ARRAY_AGG(DISTINCT CONCAT(b.Description, '#', d.Relation, '#', c.Description))) AS array_agg,
-        FORMAT('%T', ARRAY_AGG(DISTINCT e.Description)) AS array_agg
+            FORMAT('%T', ARRAY_AGG(DISTINCT CONCAT(b.Description, '#', d.Relation, '#', c.Description))) AS array_agg,
+            FORMAT('%T', ARRAY_AGG(DISTINCT e.Description)) AS array_agg
         FROM `bdcc22project.openimages.image_labels` AS a
         LEFT JOIN `bdcc22project.openimages.relations` AS d ON (a.ImageId=d.ImageId)
         LEFT JOIN `bdcc22project.openimages.classes` AS b ON (d.Label1=b.Label)
@@ -160,15 +161,15 @@ def image_search_multiple():
     results = BQ_CLIENT.query(
     '''
     WITH example AS(
-    SELECT DISTINCT
-        ImageId,
-        FORMAT('%T', ARRAY_AGG(Description ) OVER (PARTITION BY ImageId)) AS array_agg
-    FROM `bdcc22project.openimages.image_labels`
-    LEFT JOIN `bdcc22project.openimages.classes` USING(Label)
+        SELECT DISTINCT
+            ImageId,
+            FORMAT('%T', ARRAY_AGG(Description ) OVER (PARTITION BY ImageId)) AS array_agg
+        FROM `bdcc22project.openimages.image_labels`
+        LEFT JOIN `bdcc22project.openimages.classes` USING(Label)
     )
     SELECT * 
-    FROM example
-    WHERE  REGEXP_CONTAINS(array_agg, r'{1}')
+        FROM example
+        WHERE  REGEXP_CONTAINS(array_agg, r'{1}')
     LIMIT {0}
     
     '''.format(image_limit, description) 

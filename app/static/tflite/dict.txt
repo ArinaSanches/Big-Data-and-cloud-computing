@@ -1,10 +1,10 @@
-Dog
 Cat
-Bird
-Horse
 Fish
 Antelope
+Bird
 Deer
-Lizard
+Horse
 Snake
+Dog
 Spider
+Lizard
