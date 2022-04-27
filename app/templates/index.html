@@ -170,6 +170,22 @@
             </form>
         </td>
     </tr>
+    <tr>
+        <td>
+            <tt>/image_classify_cloud_vision</tt>
+        </td>
+        <td>
+            Use Cloud Vision model to classify images.
+        </td>
+        <td>
+            <form action="/image_classify_cloud_vision" method="POST" enctype="multipart/form-data">
+	            <label>Images: </label>
+                <input type="file" name="files" multiple/>
+                <br/>
+                <input type="submit" name="Classify" value="Classify"/>
+            </form>
+        </td>
+    </tr>
 </table>
  
 

@@ -11,6 +11,7 @@ import numpy as np
 from random import shuffle
 from google.cloud import bigquery
 from google.cloud import storage
+from google.cloud import vision
 
 # Set up logging
 logging.basicConfig(level=logging.INFO,
@@ -154,39 +155,24 @@ def relation_search():
 @app.route('/image_search_multiple')
 def image_search_multiple():
     descriptions = flask.request.args.get('descriptions').split(',')
-    a = flask.request.args.get('descriptions').split(',')
-    description = str(a).strip("[]").replace("u'",'"').replace("'",'"').replace(", ","|")
-    texto = "[" + description.replace("|", ", ") + "]"
     image_limit = flask.request.args.get('image_limit', default=10, type=int)
     results = BQ_CLIENT.query(
     '''
-    WITH example AS(
-        SELECT DISTINCT
-            ImageId,
-            FORMAT('%T', ARRAY_AGG(Description ) OVER (PARTITION BY ImageId)) AS array_agg
-        FROM `bdcc22project.openimages.image_labels`
-        LEFT JOIN `bdcc22project.openimages.classes` USING(Label)
-    )
-    SELECT * 
-        FROM example
-        WHERE  REGEXP_CONTAINS(array_agg, r'{1}')
-    LIMIT {0}
+    SELECT imageID, array_agg(Description), COUNT(*) AS num1, 
+    (SELECT COUNT(*) FROM UNNEST({0})) AS num2
+    FROM `bdcc22project.openimages.image_labels` 
+    JOIN `bdcc22project.openimages.classes` USING(Label)
+    WHERE Description IN  (SELECT * FROM UNNEST({0}))
+    GROUP BY imageID
+    ORDER BY num1 DESC, imageID
+    LIMIT {1}
     
-    '''.format(image_limit, description) 
+    '''.format(descriptions, image_limit) 
     ).result()
 
-    results1 = []
-    for row in results:
-        line = str(row[1]).strip("[]").strip().replace('"', "").split(", ")       
-        c = list(filter(lambda x: x in descriptions, line))
-        results1.append({'ImageID': row[0], 'Classes': c, 'Nclass': len(c)})
-
-
-    data = dict(descriptions=texto,
-                nclass=len(descriptions),
+    data = dict(descriptions=descriptions,
                 image_limit=image_limit,
-                results=results1,
-                tamanho=len(results1))
+                results=results)
     return flask.render_template('image_search_multiple.html', data=data)
 
 @app.route('/image_classify_classes')
@@ -217,6 +203,40 @@ def image_classify():
                 results=results)
     return flask.render_template('image_classify.html', data=data)
 
+
+@app.route('/image_classify_cloud_vision', methods=['POST', 'GET'])
+def image_classify_cloud_vision():
+    files = flask.request.files.getlist('files')
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = r"imposing-kite-140412-c3719b8fafdc.json"
+    results = []
+    if len(files) > 1 or files[0].filename != '':
+        for file in files:
+
+            blob = storage.Blob(file.filename, APP_BUCKET)
+            blob.upload_from_file(file, blob, content_type=file.mimetype)
+            blob.make_public()
+
+            client = vision.ImageAnnotatorClient()
+
+            file.seek(0)
+
+            image = vision.Image(content=file.read())
+            response = client.label_detection(image=image)
+            labels = response.label_annotations
+
+            label = []
+            for l in labels:
+                label.append({'description': l.description, 'score': round(l.score, 2)})
+            
+            logging.info('image_classify: filename={} blob={} classifications={}'\
+                .format(file.filename,blob.name,label))
+            results.append(dict(bucket=APP_BUCKET,
+                                filename=file.filename,
+                                classifications=label))
+    
+    data = dict(bucket_name=APP_BUCKET.name,
+                results=results)
+    return flask.render_template('image_classify_cloud_vision.html', data=data)
 
 
 if __name__ == '__main__':
